@@ -86,7 +86,7 @@ export default function PaymentsView({
 
         if (currentOrder) {
           setLinkedNotice(
-            `Kitchen Display pre-filled Ticket: ${posCheckoutOrderId} (Customer: ${currentOrder.customerName}, Subtotal: $${currentOrder.total})`
+            `Kitchen Display pre-filled Ticket: ${posCheckoutOrderId} (Customer: ${currentOrder.customerName}, Subtotal: $${currentOrder.totalAmount})`
           );
 
           // Auto-link CRM Customer
@@ -168,10 +168,10 @@ export default function PaymentsView({
   const getSubtotal = () => {
     if (selectedBillType === 'order') {
       const order = orders.find(o => o.id === selectedOrderId);
-      return order ? order.total : 0;
+      return Number(order?.totalAmount ?? 0); 
     } else if (selectedBillType === 'table') {
       const table = tables.find(t => t.number === selectedTableNumber);
-      return table ? (table.spendAmount || 0) : 0;
+      return Number(table?.spendAmount ?? 0);
     } else {
       return parseFloat(customAmount) || 0;
     }
@@ -209,6 +209,10 @@ export default function PaymentsView({
 
   // Total discounts combined
   const totalDiscountPct = Math.min(100, tierDiscountPct + promoDiscountPct);
+
+  console.log(
+  orders.find(o => o.id === selectedOrderId)
+);
 
   // Calculations
   const subtotalVal = getSubtotal();
@@ -260,7 +264,7 @@ export default function PaymentsView({
   };
 
   // Settle current bill simulator
-  const handleSettleSubmit = (e) => {
+  const handleSettleSubmit = async (e) => {
     e.preventDefault();
     if (subtotalVal <= 0) {
       alert("Bill cumulative sum must be positive to clear.");
@@ -279,7 +283,7 @@ export default function PaymentsView({
       setTimeout(() => {
         setProcessingStep('Recording financial ledger coordinates...');
         
-        setTimeout(() => {
+        setTimeout(async () => {
           // Finalize ledger values
           const newTxnId = `TXN-${Math.floor(8410 + Math.random() * 950)}`;
           const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -309,12 +313,7 @@ export default function PaymentsView({
           };
 
           // Execute cascade
-          onSettleOrderAndTable(
-            targetPayment,
-            selectedBillType === 'order' ? selectedOrderId : undefined,
-            selectedBillType === 'table' ? selectedTableNumber : undefined,
-            associatedCustomer?.id
-          );
+          await onSettleOrderAndTable(targetPayment);
 
           setIsProcessing(false);
           setProcessingStep('');
@@ -367,6 +366,8 @@ export default function PaymentsView({
 
   const settledTxnVolume = payments.filter(p => p.status === 'Settled').length;
 
+   
+  
   return (
     <div id="payments-view-root" className="space-y-6">
       
@@ -499,7 +500,7 @@ export default function PaymentsView({
                       >
                         {outstandingOrders.map(o => (
                           <option key={o.id} value={o.id}>
-                            {o.id} — {o.customerName} ({o.tableNumber ? `Table ${o.tableNumber}` : 'Takeaway/Deliv'}) : ${o.total}
+                            {o.id} — {o.customerName} ({o.tableNumber ? `Table ${o.tableNumber}` : 'Takeaway/Deliv'}) : ${o.totalAmount}
                           </option>
                         ))}
                       </select>

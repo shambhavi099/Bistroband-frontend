@@ -27,26 +27,46 @@ export default function StaffView({
 }) {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const activeStaff = staffList.filter(staff => staff.status === "on-duty");
+  const onBreakStaff = staffList.filter(staff => staff.status === "on-break");
+  const offDutyStaff = staffList.filter(staff => staff.status === "off-duty");
 
   // Form states to add team member
   const [showAddForm, setShowAddForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState('Server');
   const [newPhone, setNewPhone] = useState('555-0900');
+  const [newAge, setNewAge] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+  const [newAadhaar, setNewAadhaar] = useState('');
   const [newShift, setNewShift] = useState('Morning (8 AM - 4 PM)');
 
   // Filter staff members
-  const filteredStaff = staffList.filter((stf) => {
-    if (activeTab !== 'all' && stf.status !== activeTab) return false;
-    
-    if (searchQuery.trim() !== '') {
-      const q = searchQuery.toLowerCase();
-      const inName = stf.name.toLowerCase().includes(q);
-      const inRole = stf.role.toLowerCase().includes(q);
-      return inName || inRole;
-    }
-    return true;
-  });
+ const filteredStaff = staffList.filter((stf) => {
+
+  if (activeTab === "on-duty" && stf.status !== "on-duty")
+    return false;
+
+  if (activeTab === "on-break" && stf.status !== "on-break")
+    return false;
+
+  if (activeTab === "off-duty" && stf.status !== "off-duty")
+    return false;
+
+  if (searchQuery.trim() !== "") {
+
+    const q = searchQuery.toLowerCase();
+
+    return (
+      stf.name.toLowerCase().includes(q) ||
+      stf.role.toLowerCase().includes(q)
+    );
+  }
+
+  return true;
+});
 
   const getStatusIndicator = (status) => {
     switch (status) {
@@ -62,31 +82,40 @@ export default function StaffView({
     }
   };
 
-  const handleAddNewStaffMember = (e) => {
-    e.preventDefault();
-    if (!newName.trim()) return;
+const handleAddNewStaffMember = async (e) => {
+  e.preventDefault();
 
-    // Allocate random avatar color
-    const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-indigo-500'];
-    const randColor = colors[Math.floor(Math.random() * colors.length)];
+  if (!newName.trim()) return;
 
-    const teammate = {
-      id: `STF-${Math.floor(10 + Math.random() * 89)}`,
-      name: newName,
-      role: newRole,
-      status: 'on-duty',
-      shift: newShift,
-      avatarColor: randColor,
-      performanceScore: parseFloat((4.2 + Math.random() * 0.7).toFixed(1)),
-      phone: newPhone
-    };
-
-    onAddStaff(teammate);
-
-    setNewName('');
-    setNewPhone('555-0900');
-    setShowAddForm(false);
+  const teammate = {
+    name: newName,
+    email: newEmail,
+    password: newPassword,
+    role: newRole,
+    shift: newShift,
+    phone: newPhone,
+    address: newAddress,
+    aadhaar: newAadhaar,
   };
+
+  try {
+    await onAddStaff(teammate);
+
+    setNewName("");
+    setNewAge("");
+    setNewEmail("");
+    setNewPassword("");
+    setNewRole("Server");
+    setNewShift("Morning (8 AM - 4 PM)");
+    setNewPhone("");
+    setNewAddress("");
+    setNewAadhaar("");
+    setShowAddForm(false);
+
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
   return (
     <div id="staff-view-parent" className="space-y-6">
@@ -110,20 +139,26 @@ export default function StaffView({
           <div>
             <span className="block text-xs uppercase text-slate-400 font-bold">On Active Duty</span>
             <span className="text-xl font-bold font-mono text-slate-900">
-              {staffList.filter(s => s.status === 'active' || s.status === 'on-duty').length} Active
+                {activeStaff.length} Active
             </span>
           </div>
         </div>
 
         <div className="bg-white border p-5 rounded-2xl flex items-center space-x-4 border-slate-100 shadow-sm">
-          <div className="p-3 bg-amber-50 text-amber-650 rounded-xl">
-            <Star className="h-6 w-6 text-amber-600" />
+          <div className="p-3 bg-blue-50 rounded-xl">
+            <Users className="h-6 w-6 text-blue-600" />
           </div>
+
           <div>
-            <span className="block text-xs uppercase text-slate-400 font-bold">Lounge Score Average</span>
-            <span className="text-xl font-bold font-mono text-slate-900">4.72 / 5.0 Rating</span>
+            <span className="block text-xs uppercase text-slate-400 font-bold">
+              Managers
+            </span>
+
+            <span className="text-xl font-bold font-mono text-slate-900">
+              {staffList.filter(s => s.role === "Manager").length}
+            </span>
           </div>
-        </div>
+       </div>
       </div>
 
       {/* Staff directory filtering tools */}
@@ -187,6 +222,58 @@ export default function StaffView({
                 placeholder="e.g. Richard Hendricks"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
+                className="w-full px-3 py-2 border bg-white rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                required
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                className="w-full px-3 py-2 border bg-white rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                required
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full px-3 py-2 border bg-white rounded-lg"
+              />
+            </div>
+             
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                Address
+              </label>
+              <input
+                type="text"
+                required
+                value={newAddress}
+                onChange={(e) => setNewAddress(e.target.value)}
+                className="w-full px-3 py-2 border bg-white rounded-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                Aadhaar Number
+              </label>
+              <input
+                type="text"
+                required
+                value={newAadhaar}
+                onChange={(e) => setNewAadhaar(e.target.value)}
                 className="w-full px-3 py-2 border bg-white rounded-lg"
               />
             </div>
@@ -257,19 +344,28 @@ export default function StaffView({
               {/* Card Header row */}
               <div className="flex items-center justify-between">
                 <span className="text-[9px] font-mono font-bold text-slate-400">{stf.id}</span>
-                <span className={`h-2.5 w-2.5 rounded-full ${getStatusIndicator(stf.status)}`} title={`State: ${stf.status}`} />
+                <span className="h-2.5 w-2.5 rounded-full bg-green-500" title={`State: ${stf.status}`} />
               </div>
 
-              {/* Central Name details */}
-              <div className="flex items-center space-x-3.5">
-                <div className={`h-11 w-11 rounded-full font-bold text-slate-50 flex items-center justify-center shadow-inner uppercase ${stf.avatarColor}`}>
-                  {stf.name.split(' ').map(n=>n[0]).join('')}
-                </div>
-                <div className="overflow-hidden">
-                  <h4 className="text-xs font-bold text-slate-900 truncate">{stf.name}</h4>
-                  <span className="text-[10px] text-slate-500 font-semibold">{stf.role}</span>
-                </div>
-              </div>
+            {/* Central Name details */}
+            <div className="flex items-center space-x-3.5">
+            <div className="h-11 w-11 rounded-full bg-yellow-700 text-white font-bold flex items-center justify-center uppercase shadow-inner">
+              {stf.name
+                ?.split(" ")
+                .map(word => word[0])
+                .join("")}
+            </div>
+
+            <div className="overflow-hidden">
+              <h4 className="text-xs font-bold text-slate-900 truncate">
+                {stf.name}
+              </h4>
+
+              <span className="text-[10px] text-slate-500 font-semibold">
+                {stf.role}
+              </span>
+            </div>
+          </div>
 
               {/* Phone, Score metrics */}
               <div className="border-t border-slate-50 pt-3.5 space-y-2 text-xs">

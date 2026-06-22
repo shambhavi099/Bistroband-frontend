@@ -16,7 +16,8 @@ export default function InventoryView({
   inventoryItems, 
   onUpdateStock, 
   onAddStockItem, 
-  onRestockLowStock 
+  onRestockLowStock,
+  onDeleteInventory,
 }) {
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,6 +29,8 @@ export default function InventoryView({
   const [newQty, setNewQty] = useState('20');
   const [newMin, setNewMin] = useState('10');
   const [newUnit, setNewUnit] = useState('lbs');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
 
   const lowStockItems = inventoryItems.filter(item => item.quantity <= item.minQuantity);
 
@@ -39,7 +42,7 @@ export default function InventoryView({
     return true;
   });
 
-  const handleAddNewIngredient = (e) => {
+  const handleAddNewIngredient = async (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
 
@@ -47,7 +50,6 @@ export default function InventoryView({
     const min = parseFloat(newMin) || 0;
 
     const newItem= {
-      id: `INV-${Math.floor(100 + Math.random() * 900)}`,
       name: newName,
       quantity: qty,
       unit: newUnit,
@@ -57,7 +59,18 @@ export default function InventoryView({
       lastSupplied: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
     };
 
-    onAddStockItem(newItem);
+    const response = await api.post("/inventory", {
+    name: newName,
+    quantity: qty,
+    unit: newUnit,
+    minQuantity: min,
+    category: newCat
+  });
+
+    onAddStockItem({
+      id: response.data.inventoryId,
+      ...response.data.data
+    });
     setNewName('');
     setNewQty('20');
     setNewMin('10');
@@ -227,7 +240,6 @@ export default function InventoryView({
         <table className="w-full text-left text-xs border-collapse">
           <thead>
             <tr className="bg-slate-50/70 border-b border-slate-100 text-slate-500 font-semibold font-sans">
-              <th className="py-3 px-4">Item SKU</th>
               <th className="py-3 px-4">Ingredient Name</th>
               <th className="py-3 px-4">Category</th>
               <th className="py-3 px-4 text-right">In Stock Quantity</th>
@@ -243,7 +255,6 @@ export default function InventoryView({
 
               return (
                 <tr key={item.id} className="hover:bg-slate-50/40 transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-slate-500">{item.id}</td>
                   <td className="py-3.5 px-4">
                     <span className="font-semibold text-slate-900">{item.name}</span>
                     <span className="block text-[10px] text-slate-400 mt-0.5 font-medium">Last supplied: {item.lastSupplied}</span>
@@ -286,6 +297,15 @@ export default function InventoryView({
                       >
                         +
                       </button>
+
+                      <button
+                          onClick={() => {
+                              setSelectedItem(item);
+                              setShowDeleteModal(true);
+                          }}
+                        >
+                          🗑️
+                        </button>
                     </div>
                   </td>
                 </tr>
@@ -295,6 +315,47 @@ export default function InventoryView({
         </table>
       </div>
 
+      {showDeleteModal && (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-xl shadow-xl p-6 w-96">
+          <h2 className="text-xl font-semibold mb-3">
+            Delete Inventory Item
+          </h2>
+
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to delete{" "}
+            <span className="font-semibold">
+              {selectedItem?.name}
+            </span>
+            ?
+          </p>
+
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => {
+                setShowDeleteModal(false);
+                setSelectedItem(null);
+              }}
+              className="px-4 py-2 rounded-lg border"
+            >
+              Cancel
+            </button>
+
+            <button
+              onClick={() => {
+                onDeleteInventory(selectedItem.id);
+
+                setShowDeleteModal(false);
+                setSelectedItem(null);
+              }}
+              className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+     )}
     </div>
   );
 }

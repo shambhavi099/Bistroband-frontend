@@ -3,60 +3,39 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState } from 'react';
-import { 
-  TrendingUp, 
-  DollarSign, 
-  ShoppingBag, 
-  Clock, 
-  FileSpreadsheet, 
-
+import { useState } from "react";
+import {
+  TrendingUp,
+  DollarSign,
+  ShoppingBag,
+  Clock,
+  FileSpreadsheet,
   Flame,
   Award,
+} from "lucide-react";
 
-} from 'lucide-react';
+  export default function ReportsView({
+    orders,
+    menuItems,
+    reportSummary,
+    popularSellers,
+  }) {
 
+  const [reportRange, setReportRange] = useState("today");
 
+  const totalRevenue = reportSummary?.totalRevenue || 0;
 
+  const count = reportSummary?.count || 0;
 
-export default function ReportsView({ orders, menuItems }) {
-  const [reportRange, setReportRange] = useState('today');
-
-  // Compute stats on active orders
-  const validOrders = orders.filter(o => o.status !== 'cancelled');
-  const count = validOrders.length;
-  const totalRevenue = validOrders.reduce((sum, o) => sum + o.total, 0);
-  const averageTicketValue = count > 0 ? (totalRevenue / count).toFixed(2) : "0.00";
-
-  // Calculate top items sales volume based on current order receipts
-  const itemCounts = {};
-
-  orders.forEach(o => {
-    if (o.status === 'cancelled') return;
-    o.items.forEach(it => {
-      if (!itemCounts[it.name]) {
-        // Find category from menu if possible
-        const matched = menuItems.find(m => m.name === it.name);
-        itemCounts[it.name] = { qty: 0, rev: 0, cat: matched?.category || 'Mains' };
-      }
-      itemCounts[it.name].qty += it.quantity;
-      itemCounts[it.name].rev += it.quantity * it.price;
-    });
-  });
-
-  const popularSellers = Object.keys(itemCounts)
-    .map(name => ({
-      name,
-      quantitySold: itemCounts[name].qty,
-      revenue: itemCounts[name].rev,
-      category: itemCounts[name].cat
-    }))
-    .sort((a,b) => b.quantitySold - a.quantitySold)
-    .slice(0, 5);
+  const averageTicketValue =
+    reportSummary?.averageTicketValue || 0;
 
   const mockExportCSV = () => {
-    alert("Compiling transaction ledgers...\n\nCSV File 'BistroBoard_Ledger_2026-06-02.csv' successfully downloaded to cloud workspace.");
+    alert(
+      "Compiling transaction ledgers...\n\nCSV File 'BistroBoard_Ledger_2026-06-02.csv' successfully downloaded to cloud workspace."
+    );
   };
+
 
   return (
     <div id="reports-view-parent" className="space-y-6">

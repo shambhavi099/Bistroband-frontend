@@ -45,16 +45,28 @@ export default function App() {
   const [orders, setOrders] = useState([]);
   const [tables, setTables] = useState([]);
   const [menuItems, setMenuItems] = useState([]);
-  const [inventoryItems, setInventoryItems] = useState(initialInventory);
+  const [inventoryItems, setInventoryItems] = useState([]);
   const [staffList, setStaffList] = useState([]);
-  const [customers, setCustomers] = useState(initialCustomers);
-  const [payments, setPayments] = useState(initialPayments);
+  const [customers, setCustomers] = useState([]);
+  const [payments, setPayments] = useState([]);
+
+  const [reportSummary, setReportSummary] = useState({
+  totalRevenue: 0,
+  count: 0,
+  averageTicketValue: 0,
+});
+
+const [popularSellers, setPopularSellers] = useState([]);
 
   useEffect(() => {
   fetchEmployees();
   fetchTables();
   fetchOrders();
   fetchMenu();
+  fetchInventory();
+  fetchCustomers();
+  fetchPayments();
+  fetchReports();
 }, []);
 
   // Admin and Operations Configurations States
@@ -87,13 +99,13 @@ export default function App() {
     ]);
   };
 
-  const fetchEmployees = async () => {
+const fetchEmployees = async () => {
   try {
     const response = await api.get("/employees");
 
     setStaffList(response.data.data || []);
   } catch (error) {
-    console.error("Employee Fetch Error:", error);
+    console.log(error);
   }
 };
 
@@ -134,39 +146,57 @@ const fetchMenu = async () => {
     console.error("Menu Fetch Error:", error);
   }
 };
-  const handleLoginSuccess = (user)=> {
-    setCurrentUser(user);
-    // Add success logger
+
+const fetchReports = async () => {
+  try {
+
+    const [summaryRes, popularRes] = await Promise.all([
+      api.get("/reports/summary"),
+      api.get("/reports/popular-items"),
+    ]);
+
+    setReportSummary(summaryRes.data.data);
+
+    setPopularSellers(popularRes.data.data);
+
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+const handleLoginSuccess = (user)=> {
+  setCurrentUser(user);
+  // Add success logger
+  const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const nextId = `log-${Math.floor(1000 + Math.random() * 9000)}`;
+  setAuditLogs(prev => [
+    { id: nextId, timestamp: timeStr, category: 'SYSTEM', action: `Staff authenticated: ${user.name} (${user.role}) logged in`, severity: 'info', user: user.name },
+    ...prev
+  ]);
+  
+  // Auto-navigate to appropriate initial tab based on role
+  if (user.role === 'Chef') {
+    setActiveTab('orders');
+  } else if (user.role === 'Server') {
+    setActiveTab('tables');
+  } else {
+    setActiveTab('dashboard');
+  }
+};
+
+const handleLogout = () => {
+  if (currentUser) {
+    const uName = currentUser.name;
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     const nextId = `log-${Math.floor(1000 + Math.random() * 9000)}`;
     setAuditLogs(prev => [
-      { id: nextId, timestamp: timeStr, category: 'SYSTEM', action: `Staff authenticated: ${user.name} (${user.role}) logged in`, severity: 'info', user: user.name },
+      { id: nextId, timestamp: timeStr, category: 'SYSTEM', action: `Staff session ended: ${uName} signed out`, severity: 'info', user: uName },
       ...prev
     ]);
-    
-    // Auto-navigate to appropriate initial tab based on role
-    if (user.role === 'Chef') {
-      setActiveTab('orders');
-    } else if (user.role === 'Server') {
-      setActiveTab('tables');
-    } else {
-      setActiveTab('dashboard');
-    }
-  };
-
-  const handleLogout = () => {
-    if (currentUser) {
-      const uName = currentUser.name;
-      const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      const nextId = `log-${Math.floor(1000 + Math.random() * 9000)}`;
-      setAuditLogs(prev => [
-        { id: nextId, timestamp: timeStr, category: 'SYSTEM', action: `Staff session ended: ${uName} signed out`, severity: 'info', user: uName },
-        ...prev
-      ]);
-    }
-    setCurrentUser(null);
-    setActiveTab('dashboard');
-  };
+  }
+  setCurrentUser(null);
+  setActiveTab('dashboard');
+};
 
   const handleResetToDefaults = () => {
     setOrders(initialOrders);
@@ -275,6 +305,15 @@ const fetchMenu = async () => {
       setCustomers(prev => [...prev, newCust]);
     }
   };
+
+  const fetchInventory = async () => {
+  try {
+    const response = await api.get("/inventory");
+    setInventoryItems(response.data.data || []);
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   const handleReplenishStock = () => {
     setInventoryItems(prevItems => 
@@ -491,155 +530,191 @@ const fetchMenu = async () => {
   }
 };
 
-  // Inventory Handlers
-  const handleUpdateStock = (itemId, value) => {
-    setInventoryItems(prev => 
-      prev.map(item => {
-        if (item.id === itemId) {
-          const newQty = Math.max(0, parseFloat((item.quantity + value).toFixed(2)));
-          let status= 'in-stock';
-          
-          if (newQty === 0) status = 'out-of-stock';
-          else if (newQty <= item.minQuantity) status = 'low-stock';
+// Inventory Handlers
+const handleUpdateStock = async (itemId, value) => {
+  try {
+    console.log(itemId, value);
 
-          return {
-            ...item,
-            quantity: newQty,
-            status
-          };
-        }
-        return item;
-      })
+    const response = await api.patch(`/inventory/${itemId}`, {
+      value,
+    });
+
+    console.log(response.data);
+
+    fetchInventory();
+  } catch (error) {
+    console.log(error.response?.status);
+    console.log(error.response?.data);
+    console.log(error.message);
+  }
+};
+
+const handleAddStockItem = async (item) => {
+  try {
+
+    const response = await api.post("/inventory", item);
+
+    setInventoryItems(prev => [
+      ...prev,
+      {
+        id: response.data.inventoryId,
+        ...response.data.data,
+      },
+    ]);
+
+  } catch (error) {
+    console.log(error.response?.data);
+  }
+};
+
+const handleRestockLowStock = async () => {
+  try {
+    await api.patch("/inventory/restock");
+    fetchInventory();
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const handleDeleteInventory = async (itemId) => {
+  try {
+    console.log("Deleting:", itemId);
+
+    const response = await api.delete(`/inventory/${itemId}`);
+
+    console.log(response.data);
+
+    setInventoryItems(prev =>
+      prev.filter(item => item.id !== itemId)
     );
-  };
+  } catch (error) {
+    console.log(error.response?.status);
+    console.log(error.response?.data);
+    console.log(error.message);
+  }
+};
 
-  const handleAddStockItem = (item) => {
-    setInventoryItems(prev => [...prev, item]);
-  };
 
-  const handleRestockLowStock = () => {
-    setInventoryItems(prev => 
-      prev.map(item => {
-        if (item.quantity <= item.minQuantity) {
-          // Top up stock by 40 units or double minQuantity
-          const refilledValue = item.minQuantity * 2 + 15;
-          return {
-            ...item,
-            quantity: refilledValue,
-            status: 'in-stock',
-            lastSupplied: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-          };
-        }
-        return item;
-      })
+// Staff Handlers
+const handleAddStaff = async (staffData) => {
+  try {
+    console.log("Sending:", staffData);
+
+    const response = await api.post("/employees", staffData);
+
+    console.log("Response:", response.data);
+
+    setStaffList(prev => [
+      ...prev,
+      {
+        id: response.data.employeeId,
+        ...response.data.data,
+      },
+    ]);
+
+  } catch (error) {
+    console.log("Status:", error.response?.status);
+    console.log("Error:", error.response?.data);
+    console.log(error.message);
+  }
+};
+
+const handleUpdateStaffStatus = async (staffId, status) => {
+  try {
+
+    await api.patch(
+      `/employees/status/${staffId}`,
+      { status }
     );
-  };
 
-  // Staff Handlers
-  const handleAddStaff = (newStaff) => {
-    setStaffList(prev => [...prev, newStaff]);
-  };
+    fetchEmployees();
 
-  const handleUpdateStaffStatus = (staffId, status) => {
-    setStaffList(prev => 
-      prev.map(st => st.id === staffId ? { ...st, status } : st)
-    );
-  };
-
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
   const handleFireStaff = (staffId) => {
     setStaffList(prev => prev.filter(st => st.id !== staffId));
   };
 
   // Customer Handlers
-  const handleAddCustomer = (newCustomer) => {
-    setCustomers(prev => [...prev, newCustomer]);
-  };
+  const handleAddCustomer = async (customerData) => {
+  try {
+    const response = await api.post("/customers", customerData);
 
-  const handleUpdateCustomer = (updatedCustomer) => {
-    setCustomers(prev => 
-      prev.map(c => c.id === updatedCustomer.id ? updatedCustomer : c)
-    );
-  };
+    setCustomers(prev => [
+      ...prev,
+      {
+        id: response.data.customerId,
+        ...response.data.data,
+      },
+    ]);
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
-  const handleDeleteCustomer = (customerId) => {
-    setCustomers(prev => prev.filter(c => c.id !== customerId));
-  };
+  const handleUpdateCustomer = async (customer) => {
+  try {
+    await api.put(`/customers/${customer.id}`, customer);
+
+    fetchCustomers();
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+const handleDeleteCustomer = async (customerId) => {
+  try {
+    await api.delete(`/customers/${customerId}`);
+
+    await fetchCustomers();
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+  const fetchCustomers = async () => {
+  try {
+    const response = await api.get("/customers");
+
+    setCustomers(response.data.data || []);
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   // Payment Handlers
+  const fetchPayments = async () => {
+  try {
+    const res = await api.get("/payments");
+
+    setPayments(res.data);
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
   const handleAddPayment = (newPayment) => {
     setPayments(prev => [newPayment, ...prev]);
   };
 
-  const handleSettleOrderAndTable = (
-    newPayment,
-    orderId,
-    tableNumber,
-    customerId
-  ) => {
-    // 1. Log payment
-    setPayments(prev => [newPayment, ...prev]);
+  const handleSettleOrderAndTable = async (paymentData) => {
+  try {
+    const res = await api.post("/payments", paymentData);
 
-    // 2. Clear table space
-    if (tableNumber) {
-      setTables(prevTables => 
-        prevTables.map(t => {
-          if (t.number === tableNumber) {
-            return {
-              ...t,
-              status: 'available',
-              spendAmount: undefined,
-              currentOrderId: undefined,
-              assignedStaffName: undefined
-            };
-          }
-          return t;
-        })
-      );
-    }
+    // Refresh all data
+    await Promise.all([
+      fetchOrders(),
+      fetchTables(),
+      fetchCustomers(),
+      fetchPayments(),
+    ]);
 
-    // 3. Mark corresponding order as served/finished
-    if (orderId) {
-      setOrders(prevOrders => 
-        prevOrders.map(o => {
-          if (o.id === orderId) {
-            return { ...o, status: 'served', paymentStatus: 'Paid' };
-          }
-          return o;
-        })
-      );
-    } else if (tableNumber) {
-      setOrders(prevOrders => 
-        prevOrders.map(o => {
-          if (o.tableNumber === tableNumber && o.status !== 'served' && o.status !== 'cancelled') {
-            return { ...o, status: 'served', paymentStatus: 'Paid' };
-          }
-          return o;
-        })
-      );
-    }
-
-    // 4. Update the Customer profile with cumulative billing stats
-    if (customerId) {
-      setCustomers(prevCusts => 
-        prevCusts.map(c => {
-          if (c.id === customerId) {
-            const todayStr = new Date().toLocaleDateString('en-US', {
-              month: 'short',
-              day: '2-digit',
-              year: 'numeric'
-            });
-            return {
-              ...c,
-              totalSpent: parseFloat((c.totalSpent + newPayment.total).toFixed(2)),
-              totalVisits: c.totalVisits + 1,
-              lastVisit: todayStr
-            };
-          }
-          return c;
-        })
-      );
-    }
-  };
+    return res.data;
+  } catch (err) {
+    console.error(err.response?.data || err.message);
+  }
+};
 
   // Tab Header Translation label lookup
   const getTabHeaderLabel = () => {
@@ -792,6 +867,7 @@ const fetchMenu = async () => {
               onUpdateStock={handleUpdateStock}
               onAddStockItem={handleAddStockItem}
               onRestockLowStock={handleRestockLowStock}
+              onDeleteInventory={handleDeleteInventory}
             />
           )}
 
@@ -829,10 +905,12 @@ const fetchMenu = async () => {
           )}
 
           {activeTab === 'reports' && (
-            <ReportsView 
+            <ReportsView
               orders={orders}
               menuItems={menuItems}
-            />
+              reportSummary={reportSummary}
+              popularSellers={popularSellers}
+          />
           )}
 
           {activeTab === 'admin' && (

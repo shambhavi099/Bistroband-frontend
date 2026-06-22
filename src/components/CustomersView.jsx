@@ -94,7 +94,7 @@ export default function CustomersView({
   const totalVisits = customers.reduce((sum, c) => sum + c.totalVisits, 0);
   const avgTicketValue = totalVisits > 0 ? (totalLifetimeSpend / totalVisits).toFixed(2) : '0.00';
 
-  const handleAddNewCustomerField = (e) => {
+  const handleAddNewCustomerField = async (e) => {
     e.preventDefault();
     if (!newName.trim()) return;
 
@@ -105,22 +105,17 @@ export default function CustomersView({
       ? newFavDishes.split(',').map(d => d.trim()).filter(Boolean)
       : ['Truffle Ribeye Steak'];
 
-    const newCustomer = {
-      id: `CUST-${Math.floor(100 + Math.random() * 899)}`,
-      name: newName,
-      email: newEmail || `${newName.toLowerCase().replace(/\s+/g, '')}@example.com`,
-      phone: newPhone || '555-0100',
-      tier: newTier,
-      preferences: newPreferences || 'No specific preferences listed.',
-      favoriteDishes: favoriteDishesArray,
-      totalSpent: 0,
-      totalVisits: 0,
-      lastVisit: 'Never',
-      avatarColor: randColor
-    };
+   const newCustomer = {
+    name: newName,
+    email: newEmail,
+    phone: newPhone,
+    tier: newTier,
+    totalSpent: 0,
+    totalVisits: 0,
+    notes: newPreferences,
+};
 
-    onAddCustomer(newCustomer);
-    setSelectedCustomer(newCustomer);
+    await onAddCustomer(newCustomer);
 
     // Reset Form
     setNewName('');
