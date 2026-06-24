@@ -30,7 +30,7 @@ import {
   categoryBreakdown,
   initialCustomers,
   initialPayments
-} from '../../mockData';
+} from './data/mockData';
 
 import { Bell, HelpCircle, UtensilsCrossed } from 'lucide-react';
 
