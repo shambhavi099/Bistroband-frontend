@@ -25,41 +25,6 @@ export default function LoginView({ onLoginSuccess, onCustomerLogin,}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Preset accounts for frictionless testing
-  const presets = [
-    {
-      name: "Vedanshi",
-      username: "vedanshi",
-      role: "Manager" ,
-      passcode: "1234",
-      description: "Full access to Admin, Reports, and Operational controls",
-      color: "border-amber-400 hover:border-amber-500 bg-amber-500/5 text-amber-600",
-      icon: ShieldCheck
-    },
-    {
-      name: "Chef Marcus Vance",
-      username: "marcus_chef",
-      role: "Chef" ,
-      passcode: "chef123",
-      description: "Kitchen Orders, Menu editing, and Raw Stocks",
-      color: "border-sky-400 hover:border-sky-500 bg-sky-500/5 text-sky-600",
-      icon: ChefHat
-    },
-    {
-      name: "Jessica Lee",
-      username: "jessica_server",
-      role: "Server",
-      passcode: "server123",
-      description: "Table allocation, CRM, and POS cash registers",
-      color: "border-emerald-400 hover:border-emerald-500 bg-emerald-500/5 text-emerald-600",
-      icon: Utensils
-    }
-  ];
-
-const handleApplyPreset = (preset) => {
-  setUsername(preset.username);
-  setPasscode(preset.passcode);
-  setError(null);
-};
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -256,39 +221,6 @@ const handleCustomerPortal = async () => {
           {/* Quick Preset Accounts selector for evaluation convenience */}
           <div className="space-y-3 pt-4 border-t border-slate-100">
             <span className="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Quick-select role profiles (Evaluation Playground)</span>
-            
-            <div className="grid grid-cols-1 gap-2">
-              {presets.map((p) => {
-                const PresetIcon = p.icon;
-                return (
-                  <button
-                    key={p.username}
-                    type="button"
-                    onClick={() => handleApplyPreset(p)}
-                    className={`p-3 border rounded-xl text-left transition-all ${p.color} flex items-center justify-between border-slate-100`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-1.5 bg-white rounded-lg shrink-0 border border-slate-205/65">
-                        <PresetIcon className="h-4 w-4" />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-bold text-slate-800 leading-none">{p.name}</span>
-                          <span className="text-[9px] font-mono font-bold uppercase leading-none px-1 py-0.2 bg-white rounded border">
-                            {p.role}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-slate-500 mt-1 font-normal">{p.description}</p>
-                      </div>
-                    </div>
-                    
-                    <span className="text-[9px] font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 select-all font-bold">
-                      {p.passcode}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
           </div>
 
         </div>
