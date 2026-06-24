@@ -30,13 +30,17 @@ import {
   categoryBreakdown,
   initialCustomers,
   initialPayments
-} from './data/mockData';
+} from '../../mockData';
 
 import { Bell, HelpCircle, UtensilsCrossed } from 'lucide-react';
 
 export default function App() {
   // Authentication State
-  const [currentUser, setCurrentUser] =useState(null)
+  const [currentUser, setCurrentUser] = useState(() => {
+    const employee = localStorage.getItem("employee");
+    return employee ? JSON.parse(employee) : null;
+  });
+    
 
   // Navigation State
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -50,15 +54,26 @@ export default function App() {
   const [customers, setCustomers] = useState([]);
   const [payments, setPayments] = useState([]);
 
+//Reports
   const [reportSummary, setReportSummary] = useState({
   totalRevenue: 0,
   count: 0,
   averageTicketValue: 0,
 });
 
+
 const [popularSellers, setPopularSellers] = useState([]);
 
-  useEffect(() => {
+useEffect(() => {
+  console.log("Current User:", currentUser);
+
+  if (!currentUser) {
+    console.log("Skipping fetch...");
+    return;
+  }
+
+  console.log("Fetching data...");
+
   fetchEmployees();
   fetchTables();
   fetchOrders();
@@ -67,22 +82,21 @@ const [popularSellers, setPopularSellers] = useState([]);
   fetchCustomers();
   fetchPayments();
   fetchReports();
-}, []);
+  fetchSystemConfig();
+  fetchPromoCampaigns();
+  fetchAuditLogs();
+}, [currentUser]);
 
   // Admin and Operations Configurations States
   const [systemConfig, setSystemConfig] = useState({
     restaurantName: "BISTROBOARD GOURMET",
     taxRate: 8.25,
     serviceChargeRate: 10.0,
-    enableTableCleanup: true,
-    preparationBuffer: 5
+    cleanupTable: true,
+    prepBuffer: 5
   });
 
-  const [promoCampaigns, setPromoCampaigns] = useState([
-    { id: 'CAM-1', code: 'HAPPYHOUR', discountPct: 10, description: 'Happy hour afternoon 10% off', isActive: true },
-    { id: 'CAM-2', code: 'LOYALTY_TREAT_15', discountPct: 15, description: 'VIP patrons premium discount 15% off', isActive: true },
-    { id: 'CAM-3', code: 'WELCOME5', discountPct: 5, description: 'Welcome voucher coupon 5% off', isActive: true }
-  ]);
+  const [promoCampaigns, setPromoCampaigns] = useState([]);
 
   const [auditLogs, setAuditLogs] = useState([
     { id: 'log-1', timestamp: '10:01 AM', category: 'SYSTEM', action: 'BistroBoard Operational OS online', severity: 'info', user: 'Vedanshi' },
@@ -90,14 +104,7 @@ const [popularSellers, setPopularSellers] = useState([]);
     { id: 'log-3', timestamp: '10:10 AM', category: 'CONFIG', action: 'Tax rate initial configuration applied (8.25%)', severity: 'info', user: 'Vedanshi' }
   ]);
 
-  const handleAddAuditLog = (category, action, severity = 'info') => {
-    const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const nextId = `log-${Math.floor(1000 + Math.random() * 9000)}`;
-    setAuditLogs(prev => [
-      { id: nextId, timestamp: timeStr, category, action, severity, user: currentUser ? currentUser.name : 'Vedanshi' },
-      ...prev
-    ]);
-  };
+
 
 const fetchEmployees = async () => {
   try {
@@ -112,16 +119,15 @@ const fetchEmployees = async () => {
 const fetchTables = async () => {
   try {
     const response = await api.get("/tables");
-
     setTables(
-  response.data.data.map(table => ({
-    ...table,
-    number: `T${table.tableNumber}`,
-    status: table.status.toLowerCase(),
-    assignedStaffName: table.assignedStaffName || "",
-    spendAmount: table.spendAmount || 0
-  }))
-);
+      response.data.data.map(table => ({
+        ...table,
+        number: `T${table.tableNumber}`,
+        status: table.status.toLowerCase(),
+        assignedStaffName: table.assignedStaffName || "",
+        spendAmount: table.spendAmount || 0
+      }))
+    );
   } catch (error) {
     console.error("Tables Fetch Error:", error);
   }
@@ -130,7 +136,6 @@ const fetchTables = async () => {
 const fetchOrders = async () => {
   try {
     const response = await api.get("/orders");
-
     setOrders(response.data.data || []);
   } catch (error) {
     console.error("Orders Fetch Error:", error);
@@ -159,6 +164,37 @@ const fetchReports = async () => {
 
     setPopularSellers(popularRes.data.data);
 
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+const fetchSystemConfig = async () => {
+  try {
+    const response = await api.get("/admin/config");
+
+    setSystemConfig(response.data.data);
+
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+const fetchPromoCampaigns = async () => {
+  try {
+    const response = await api.get("/admin/promos");
+
+    setPromoCampaigns(response.data.data);
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+const fetchAuditLogs = async () => {
+  try {
+    const response = await api.get("/admin/audit");
+
+    setAuditLogs(response.data.data);
   } catch (error) {
     console.log(error.response?.data || error.message);
   }
@@ -194,6 +230,10 @@ const handleLogout = () => {
       ...prev
     ]);
   }
+
+  localStorage.removeItem("token");
+  localStorage.removeItem("employee");
+
   setCurrentUser(null);
   setActiveTab('dashboard');
 };
@@ -210,8 +250,8 @@ const handleLogout = () => {
       restaurantName: "BISTROBOARD GOURMET",
       taxRate: 8.25,
       serviceChargeRate: 10.0,
-      enableTableCleanup: true,
-      preparationBuffer: 5
+      cleanupTable: true,
+      prepBuffer: 5
     });
     setPromoCampaigns([
       { id: 'CAM-1', code: 'HAPPYHOUR', discountPct: 10, description: 'Happy hour afternoon 10% off', isActive: true },
@@ -220,10 +260,21 @@ const handleLogout = () => {
     ]);
   };
 
-  const handleWipeFinancialLedgers = () => {
-    setPayments([]);
-    setOrders(prev => prev.map(o => ({ ...o, paymentStatus: 'Unpaid' })));
-  };
+const handleWipeFinancialLedgers = async () => {
+  try {
+    await api.delete("/payments");
+
+    await fetchPayments();
+
+    await handleAddAuditLog(
+      "BILLING",
+      "Financial ledgers wiped",
+      "critical"
+    );
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
   const handleSimulateBusyRush = () => {
     const timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -306,44 +357,78 @@ const handleLogout = () => {
     }
   };
 
-  const fetchInventory = async () => {
+const fetchInventory = async () => {
+try {
+  const response = await api.get("/inventory");
+  setInventoryItems(response.data.data || []);
+} catch (error) {
+  console.log(error);
+}
+};
+
+const handleReplenishStock = async () => {
   try {
-    const response = await api.get("/inventory");
-    setInventoryItems(response.data.data || []);
+    await api.patch("/inventory/restock");
+
+    await fetchInventory();
+
+    await handleAddAuditLog(
+      "INVENTORY",
+      "Admin replenished low stock inventory",
+      "info"
+    );
   } catch (error) {
-    console.log(error);
+    console.log(error.response?.data || error.message);
   }
 };
 
-  const handleReplenishStock = () => {
-    setInventoryItems(prevItems => 
-      prevItems.map(item => {
-        if (item.quantity <= item.minQuantity) {
-          return {
-            ...item,
-            quantity: item.quantity + 300,
-            status: "in-stock",
-            lastSupplied: new Date().toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' })
-          };
-        }
-        return item;
-      })
-    );
-  };
+  const handleAddPromoCampaign = async (campaign) => {
+  try {
+    const response = await api.post("/admin/promos", campaign);
 
-  const handleAddPromoCampaign = (campaign) => {
-    setPromoCampaigns(prev => [...prev, campaign]);
-  };
+    setPromoCampaigns(prev => [
+      ...prev,
+      response.data.data,
+    ]);
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
-  const handleTogglePromoCampaignStatus = (id) => {
+  const handleTogglePromoCampaignStatus = async (id) => {
+  try {
+    const response = await api.patch(`/admin/promos/${id}`);
+
     setPromoCampaigns(prev =>
-      prev.map(c => c.id === id ? { ...c, isActive: !c.isActive } : c)
+      prev.map(c =>
+        c.id === id ? response.data.data : c
+      )
     );
-  };
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
-  const handleDeletePromoCampaign = (id) => {
-    setPromoCampaigns(prev => prev.filter(c => c.id !== id));
-  };
+const handleDeletePromoCampaign = async (id) => {
+  try {
+    const promo = promoCampaigns.find(p => p.id === id);
+
+    await api.delete(`/admin/promos/${id}`);
+
+    setPromoCampaigns(prev =>
+      prev.filter(c => c.id !== id)
+    );
+
+    await handleAddAuditLog(
+      "CAMPAIGN",
+      `Deleted promo ${promo?.code}`,
+      "warn"
+    );
+
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
   // POS - KDS Integration Linkage States
   const [posCheckoutOrderId, setPosCheckoutOrderId] = useState(null);
@@ -533,8 +618,6 @@ const handleLogout = () => {
 // Inventory Handlers
 const handleUpdateStock = async (itemId, value) => {
   try {
-    console.log(itemId, value);
-
     const response = await api.patch(`/inventory/${itemId}`, {
       value,
     });
@@ -598,11 +681,7 @@ const handleDeleteInventory = async (itemId) => {
 // Staff Handlers
 const handleAddStaff = async (staffData) => {
   try {
-    console.log("Sending:", staffData);
-
     const response = await api.post("/employees", staffData);
-
-    console.log("Response:", response.data);
 
     setStaffList(prev => [
       ...prev,
@@ -716,6 +795,44 @@ const handleDeleteCustomer = async (customerId) => {
   }
 };
 
+const updateSystemConfig = async (config) => {
+  try {
+    await api.put("/admin/config", config);
+
+    fetchSystemConfig();
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+///Handelling Audit Logs
+const handleClearAuditLogs = async () => {
+  try {
+    await api.delete("/admin/audit");
+
+    setAuditLogs([]);
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+const handleAddAuditLog = async (category, action, severity = "info") => {
+  try {
+    const response = await api.post("/admin/audit", {
+      category,
+      action,
+      severity,
+      user: currentUser.name,
+    });
+
+    setAuditLogs(prev => [response.data.data, ...prev]);
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+
+
   // Tab Header Translation label lookup
   const getTabHeaderLabel = () => {
     switch (activeTab) {
@@ -744,8 +861,65 @@ const handleDeleteCustomer = async (customerId) => {
     }
   };
 
+
+//Handle Factory Reset
+const handleFactoryReset = async () => {
+  try {
+    await api.delete("/admin/factory-reset");
+
+    await Promise.all([
+      fetchOrders(),
+      fetchCustomers(),
+      fetchPayments(),
+      fetchPromoCampaigns(),
+      fetchAuditLogs(),
+      fetchTables(),
+    ]);
+
+    await handleAddAuditLog(
+      "SYSTEM",
+      "Restaurant restored to factory defaults",
+      "critical"
+    );
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+
+//Handle Customer Portal
+const handleCustomerLogin = async (email) => {
+  try {
+    const response = await api.post("/customers/login", {
+      email,
+    });
+
+    const { token, data } = response.data;
+    console.log("Customer Login Response:", data);
+
+    localStorage.setItem("token", token);
+    localStorage.setItem("employee", JSON.stringify(data));
+
+    setCurrentUser(data);
+
+    return {
+      success: true,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message:
+        error.response?.data?.message || "Login failed",
+    };
+  }
+};
+
+
   if (!currentUser) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} />;
+    return <LoginView 
+       onLoginSuccess={handleLoginSuccess}
+       onCustomerLogin={handleCustomerLogin}
+      />;
   }
 
   if (currentUser.role === 'Customer') {
@@ -820,9 +994,10 @@ const handleDeleteCustomer = async (customerId) => {
         {/* Dynamic Inner Panel viewport */}
         <main id="workspace-content" className="flex-1 overflow-y-auto p-8 bg-[#fdfdfd]">
           {activeTab === 'dashboard' && (
-            <DashboardView 
+            <DashboardView
               orders={orders}
               tables={tables}
+              currentUser={currentUser}
               salesTrend={salesTrendData}
               categoryBreakdown={categoryBreakdown}
               onNavigate={setActiveTab}
@@ -916,18 +1091,20 @@ const handleDeleteCustomer = async (customerId) => {
           {activeTab === 'admin' && (
             <AdminView 
               systemConfig={systemConfig}
-              onUpdateSystemConfig={setSystemConfig}
+              setSystemConfig={setSystemConfig}
+              onUpdateSystemConfig={updateSystemConfig}
               promoCampaigns={promoCampaigns}
               onAddPromoCampaign={handleAddPromoCampaign}
               onTogglePromoCampaignStatus={handleTogglePromoCampaignStatus}
               onDeletePromoCampaign={handleDeletePromoCampaign}
               auditLogs={auditLogs}
-              onClearAuditLogs={() => setAuditLogs([])}
+              onClearAuditLogs={handleClearAuditLogs}
               onAddAuditLog={handleAddAuditLog}
               onResetToDefaults={handleResetToDefaults}
               onWipeFinancialLedgers={handleWipeFinancialLedgers}
               onSimulateBusyRush={handleSimulateBusyRush}
               onReplenishStock={handleReplenishStock}
+              onSetPromoCampaigns={setPromoCampaigns}
             />
           )}
         </main>

@@ -57,7 +57,7 @@ export default function CustomerPortal({
   const [orderType, setOrderType] = useState('dine-in');
 
   // Success Feedback Toast info
-  const [toastMessage, setToastMessage] = useState<(null);
+  const [toastMessage, setToastMessage] = useState(null);
 
   // --- TAB 2: RESERVATION STATES ---
   const [reserveTableId, setReserveTableId] = useState('');

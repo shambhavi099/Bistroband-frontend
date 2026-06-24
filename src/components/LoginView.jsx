@@ -16,9 +16,11 @@ import {
 } from 'lucide-react';
 
 
-export default function LoginView({ onLoginSuccess }) {
+export default function LoginView({ onLoginSuccess, onCustomerLogin,}) {
   const [username, setUsername] = useState('');
   const [passcode, setPasscode] = useState('');
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [customerPassword, setCustomerPassword] = useState("");
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -53,11 +55,11 @@ export default function LoginView({ onLoginSuccess }) {
     }
   ];
 
-  const handleApplyPreset = (preset) => {
-    setUsername(preset.username);
-    setPasscode(preset.passcode);
-    setError(null);
-  };
+const handleApplyPreset = (preset) => {
+  setUsername(preset.username);
+  setPasscode(preset.passcode);
+  setError(null);
+};
 
 const handleSubmit = async (e) => {
   e.preventDefault();
@@ -77,8 +79,6 @@ const handleSubmit = async (e) => {
     localStorage.setItem("token", token);
     localStorage.setItem("employee", JSON.stringify(data));
 
-    console.log("Logged In User:", data);
-
     onLoginSuccess(data);
   } catch (error) {
     console.error(error);
@@ -89,6 +89,19 @@ const handleSubmit = async (e) => {
     );
   } finally {
     setIsSubmitting(false);
+  }
+};
+
+const handleCustomerPortal = async () => {
+  setError(null);
+
+  const result = await onCustomerLogin(
+    customerEmail,
+    customerPassword
+  );
+
+  if (!result.success) {
+    setError(result.message);
   }
 };
 
@@ -148,24 +161,34 @@ const handleSubmit = async (e) => {
           </div>
 
           {/* Interactive Customer Mode Portal Card */}
-          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 shadow-sm">
-            <div className="space-y-1 text-left">
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
+            <div className="space-y-1">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold uppercase tracking-wider">
-                <Sparkles className="h-2.5 w-2.5" /> Self-Serve Client Mode
+                <Sparkles className="h-2.5 w-2.5" />
+                Self-Serve Client Mode
               </span>
-              <h4 className="text-xs font-bold text-indigo-950">Bistro Customer Portal</h4>
-              <p className="text-[10px] text-indigo-700 leading-relaxed font-semibold">
-                Settle up bills online, allocate dining salon tables, lookup fresh menu lists, and trigger immediate kitchen cooking tickets.
+
+              <h4 className="text-xs font-bold text-indigo-950">
+                Bistro Customer Portal
+              </h4>
+
+              <p className="text-[10px] text-indigo-700 font-semibold">
+                Enter your registered email to access your customer portal.
               </p>
             </div>
+
+            <input
+              type="email"
+              placeholder="Registered Email"
+              value={customerEmail}
+              onChange={(e) => setCustomerEmail(e.target.value)}
+              className="w-full text-xs p-2.5 border border-indigo-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
+
             <button
               type="button"
-              onClick={() => onLoginSuccess({
-                name: "Guest Patron",
-                role: "Customer",
-                username: "guest_patron"
-              })}
-              className="py-2 px-3 bg-indigo-600 hover:bg-indigo-755 hover:bg-indigo-700 text-white font-bold rounded-xl text-[10.5px] transition-all flex items-center gap-1 shadow-md shadow-indigo-650/15 cursor-pointer shrink-0"
+              onClick={handleCustomerPortal}
+              className="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[10.5px] transition-all flex items-center justify-center gap-1"
             >
               <span>Enter Portal</span>
               <ArrowRight className="h-3 w-3 stroke-[2.5]" />

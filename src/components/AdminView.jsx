@@ -24,14 +24,15 @@ import {
  
   Gift,
 
-
   Terminal,
   
 } from 'lucide-react';
+import api from "../services/api";
 
 
 export default function AdminView({
   systemConfig,
+  setSystemConfig,
   onUpdateSystemConfig,
   promoCampaigns,
   onAddPromoCampaign,
@@ -45,101 +46,123 @@ export default function AdminView({
   onSimulateBusyRush,
   onReplenishStock
 }) {
+   
+  //
   // Navigation for Admin sublevel tabs
-  const [activeSubTab, setActiveSubTab] = useState("config");
+const [activeSubTab, setActiveSubTab] = useState("config");
 
-  // Success Feedback
-  const [saveSuccess, setSaveSuccess] = useState(null);
+// Success Feedback
+const [saveSuccess, setSaveSuccess] = useState(null);
 
-  // --- TAB 1: CONFIG STATE ---
-  const [restName, setRestName] = useState(systemConfig.restaurantName);
-  const [taxRate, setTaxRate] = useState(systemConfig.taxRate.toString());
-  const [srvCharge, setSrvCharge] = useState(systemConfig.serviceChargeRate.toString());
-  const [cleanupTbl, setCleanupTbl] = useState(systemConfig.enableTableCleanup);
-  const [prepBuffer, setPrepBuffer] = useState(systemConfig.preparationBuffer.toString());
+// ---------- PROMO FORM ----------
+const [promoCodeInput, setPromoCodeInput] = useState("");
+const [promoDiscountPct, setPromoDiscountPct] = useState("15");
+const [promoDesc, setPromoDesc] = useState("");
 
-  // --- TAB 2: PROMOS FORM STATE ---
-  const [promoCodeInput, setPromoCodeInput] = useState('');
-  const [promoDiscountPct, setPromoDiscountPct] = useState('15');
-  const [promoDesc, setPromoDesc] = useState('');
+// ---------- AUDIT FILTERS ----------
+const [logSearch, setLogSearch] = useState("");
+const [logCategoryFilter, setLogCategoryFilter] = useState("all");
+const [logSeverityFilter, setLogSeverityFilter] = useState("all");
 
-  // --- TAB 4: AUDIT LOGS SEARCH STATE ---
-  const [logSearch, setLogSearch] = useState('');
-  const [logCategoryFilter, setLogCategoryFilter] = useState('all');
-  const [logSeverityFilter, setLogSeverityFilter] = useState('all');
+const triggerFeedback = (message) => {
+  setSaveSuccess(message);
 
-  const triggerFeedback = (message) => {
-    setSaveSuccess(message);
-    setTimeout(() => {
-      setSaveSuccess(null);
-    }, 4000);
-  };
+  setTimeout(() => {
+    setSaveSuccess(null);
+  }, 4000);
+};
 
-  // Save Settings Config
-  const handleSaveConfig = (e) => {
-    e.preventDefault();
-    const updated= {
-      restaurantName: restName.trim() || 'Bistroboard Gourmet',
-      taxRate: parseFloat(taxRate) || 0,
-      serviceChargeRate: parseFloat(srvCharge) || 0,
-      enableTableCleanup: cleanupTbl,
-      preparationBuffer: parseInt(prepBuffer, 10) || 0
-    };
-    onUpdateSystemConfig(updated);
-    onAddAuditLog('CONFIG', `System configurations revised (Tax: ${taxRate}%, Service: ${srvCharge}%)`, 'info');
-    triggerFeedback('Operational configurations successfully locked & saved!');
-  };
+// =========================
+// SAVE CONFIG
+// =========================
+const handleSaveConfig = async () => {
+  try {
+    await onUpdateSystemConfig(systemConfig);
+     
+    await onAddAuditLog(
+      "CONFIG",
+      "Updated system configuration",
+      "info"
+    );
 
-  // Add Promo Campaign
-  const handleCreatePromo = (e) => {
-    e.preventDefault();
-    const code = promoCodeInput.trim().toUpperCase();
-    const pct = parseInt(promoDiscountPct, 10);
-    
-    if (!code) {
-      alert('Coupon code cannot be empty.');
-      return;
-    }
-    if (isNaN(pct) || pct < 1 || pct > 100) {
-      alert('Discount value must be a percentage between 1 and 100.');
-      return;
-    }
+    triggerFeedback("Configuration saved successfully.");
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
 
-    // Check duplication
-    if (promoCampaigns.some(c => c.code.toUpperCase() === code)) {
-      alert('A campaign with this code already exists. Set status or delete it first.');
-      return;
-    }
+// =========================
+// CREATE PROMO
+// =========================
 
-    const newCampaign= {
-      id: `CAM-${Math.floor(2000 + Math.random() * 8000)}`,
+const handleCreatePromo = async (e) => {
+  e.preventDefault();
+
+  const code = promoCodeInput.trim().toUpperCase();
+  const pct = Number(promoDiscountPct);
+
+  if (!code) {
+    return alert("Coupon code cannot be empty.");
+  }
+
+  if (pct < 1 || pct > 100) {
+    return alert("Discount must be between 1 and 100.");
+  }
+
+  try {
+    await onAddPromoCampaign({
       code,
+      description:
+        promoDesc.trim() || `${pct}% OFF - Loyalty Campaign`,
       discountPct: pct,
-      description: promoDesc.trim() || `${pct}% OFF - Loyalty Campaign Promo`,
-      isActive: true
-    };
+      isActive: true,
+    });
 
-    onAddPromoCampaign(newCampaign);
-    onAddAuditLog('CAMPAIGN', `Created campaign code ${code} giving ${pct}% off`, 'info');
-    triggerFeedback(`Promo Coupon code '${code}' successfully registered!`);
+    await onAddAuditLog(
+      "CAMPAIGN",
+      `Created promo ${code}`,
+      "info"
+    );
 
-    // Reset Form
-    setPromoCodeInput('');
-    setPromoDiscountPct('15');
-    setPromoDesc('');
-  };
+    triggerFeedback(`Promo '${code}' created successfully.`);
 
-  // Filters for Audit Logs
-  const filteredLogs = auditLogs.filter(log => {
-    if (logCategoryFilter !== 'all' && log.category !== logCategoryFilter) return false;
-    if (logSeverityFilter !== 'all' && log.severity !== logSeverityFilter) return false;
-    
-    if (logSearch.trim()) {
-      const q = logSearch.toLowerCase();
-      return log.action.toLowerCase().includes(q) || log.user.toLowerCase().includes(q) || log.category.toLowerCase().includes(q);
-    }
-    return true;
-  });
+    setPromoCodeInput("");
+    setPromoDiscountPct("15");
+    setPromoDesc("");
+
+  } catch (error) {
+    console.log(error.response?.data || error.message);
+  }
+};
+
+// =========================
+// FILTER AUDIT LOGS
+// =========================
+const filteredLogs = auditLogs.filter((log) => {
+  if (
+    logCategoryFilter !== "all" &&
+    log.category !== logCategoryFilter
+  )
+    return false;
+
+  if (
+    logSeverityFilter !== "all" &&
+    log.severity !== logSeverityFilter
+  )
+    return false;
+
+  if (logSearch.trim()) {
+    const q = logSearch.toLowerCase();
+
+    return (
+      log.action.toLowerCase().includes(q) ||
+      log.user.toLowerCase().includes(q) ||
+      log.category.toLowerCase().includes(q)
+    );
+  }
+
+  return true;
+});
 
   return (
     <div id="admin-view-root" className="space-y-6">
@@ -208,15 +231,24 @@ export default function AdminView({
                 <p className="text-[11px] text-slate-500 mt-1">Fine-tune global tax figures, kitchen thresholds, and automation settings</p>
               </div>
 
-              <form onSubmit={handleSaveConfig} className="space-y-4 text-xs font-medium">
+              <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSaveConfig();}}
+                className="space-y-4 text-xs font-medium">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   
                   <div>
                     <label className="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Restaurant Operational Brand Name</label>
                     <input
                       type="text"
-                      value={restName}
-                      onChange={(e) => setRestName(e.target.value)}
+                      value={systemConfig.restaurantName || ""}
+                      onChange={(e) =>
+                        setSystemConfig({
+                          ...systemConfig,
+                          restaurantName: e.target.value,
+                        })
+                      }
                       className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none focus:border-indigo-500 font-semibold"
                       placeholder="e.g. Bistroboard Gilded Diner"
                     />
@@ -227,8 +259,13 @@ export default function AdminView({
                     <input
                       type="number"
                       step="0.01"
-                      value={taxRate}
-                      onChange={(e) => setTaxRate(e.target.value)}
+                      value={systemConfig.taxRate || ""}
+                      onChange={(e) =>
+                        setSystemConfig({
+                          ...systemConfig,
+                          taxRate: Number(e.target.value),
+                        })
+                      }
                       className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none focus:border-indigo-500 font-mono font-bold"
                       placeholder="8.25"
                     />
@@ -239,8 +276,13 @@ export default function AdminView({
                     <input
                       type="number"
                       step="0.1"
-                      value={srvCharge}
-                      onChange={(e) => setSrvCharge(e.target.value)}
+                      value={systemConfig.serviceChargeRate || ""}
+                      onChange={(e) =>
+                        setSystemConfig({
+                          ...systemConfig,
+                          serviceChargeRate: Number(e.target.value),
+                        })
+                      }
                       className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none focus:border-indigo-500 font-mono font-bold"
                       placeholder="10.0"
                     />
@@ -250,8 +292,13 @@ export default function AdminView({
                     <label className="block text-[10px] text-slate-400 uppercase tracking-widest mb-1.5 font-bold">Default Preparation Padding Buffer (mins)</label>
                     <input
                       type="number"
-                      value={prepBuffer}
-                      onChange={(e) => setPrepBuffer(e.target.value)}
+                      value={systemConfig.prepBuffer || ""}
+                      onChange={(e) =>
+                        setSystemConfig({
+                          ...systemConfig,
+                          prepBuffer: Number(e.target.value),
+                        })
+                      }
                       className="w-full p-2.5 border rounded-lg focus:ring-1 focus:ring-indigo-500 focus:outline-none focus:border-indigo-500 font-mono font-bold"
                       placeholder="5"
                     />
@@ -267,13 +314,18 @@ export default function AdminView({
                   
                   <button
                     type="button"
-                    onClick={() => setCleanupTbl(p => !p)}
+                    onClick={() =>
+                      setSystemConfig({
+                        ...systemConfig,
+                        cleanupTable: !systemConfig.cleanupTable,
+                      })
+                    }
                     className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                      cleanupTbl ? 'bg-indigo-600' : 'bg-slate-300'
+                      systemConfig.cleanupTable ? 'bg-indigo-600' : 'bg-slate-300'
                     }`}
                   >
                     <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      cleanupTbl ? 'translate-x-5' : 'translate-x-0'
+                      systemConfig.cleanupTable ? 'translate-x-5' : 'translate-x-0'
                     }`} />
                   </button>
                 </div>
@@ -411,7 +463,7 @@ export default function AdminView({
                               onClick={() => {
                                 if (confirm(`Delete the coupon campaign campaign code '${c.code}'?`)) {
                                   onDeletePromoCampaign(c.id);
-                                  onAddAuditLog('CAMPAIGN', `Deleted promotion campaign coupon rule: ${c.code}`, 'critical');
+                                  //onAddAuditLog('CAMPAIGN', `Deleted promotion campaign coupon rule: ${c.code}`, 'critical');
                                 }
                               }}
                               className="p-1 text-slate-450 hover:text-red-500 rounded hover:bg-slate-50"
@@ -462,8 +514,8 @@ export default function AdminView({
                       type="button"
                       onClick={() => {
                         onSimulateBusyRush();
-                        onAddAuditLog('SYSTEM', 'Admin triggered bulk operation: Simulating busy lunch hour swarm traffic', 'warn');
-                        triggerFeedback('Swarm Lunch Simulation injected successfully! Tables occupied, tickets created.');
+                        //onAddAuditLog('SYSTEM', 'Admin triggered bulk operation: Simulating busy lunch hour swarm traffic', 'warn');
+                        //triggerFeedback('Swarm Lunch Simulation injected successfully! Tables occupied, tickets created.');
                       }}
                       className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
                     >
@@ -490,8 +542,8 @@ export default function AdminView({
                       type="button"
                       onClick={() => {
                         onReplenishStock();
-                        onAddAuditLog('INVENTORY', 'Admin triggered bulk stock replenishment (+300 units to low inventory)', 'info');
-                        triggerFeedback('Inventory stockpile successfully replenished! All critical stock levels healthy.');
+                        //onAddAuditLog('INVENTORY', 'Admin triggered bulk stock replenishment (+300 units to low inventory)', 'info');
+                        //triggerFeedback('Inventory stockpile successfully replenished! All critical stock levels healthy.');
                       }}
                       className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs"
                     >
@@ -519,8 +571,8 @@ export default function AdminView({
                       onClick={() => {
                         if (confirm('CRITICAL WARNING: This will permanently erase ALL checkout transaction ledgers history. Continue?')) {
                           onWipeFinancialLedgers();
-                          onAddAuditLog('BILLING', 'Admin executed deep purge on historical financial checkout ledgers database', 'critical');
-                          triggerFeedback('Historical financial database wiped clean!');
+                          //onAddAuditLog('BILLING', 'Admin executed deep purge on historical financial checkout ledgers database', 'critical');
+                          //triggerFeedback('Historical financial database wiped clean!');
                         }
                       }}
                       className="w-full py-2 bg-rose-600 hover:bg-rose-750 hover:bg-rose-700 text-white font-bold rounded-lg text-xs"
@@ -549,8 +601,8 @@ export default function AdminView({
                       onClick={() => {
                         if (confirm('Reset BistroBoard operational OS back to baseline factory state? This clears edits and additions.')) {
                           onResetToDefaults();
-                          onAddAuditLog('SYSTEM', 'Hard reset baseline factory restore executed on BistroBoard OS database', 'critical');
-                          triggerFeedback('Bistroboard system baseline restored to defaults successfully.');
+                          //onAddAuditLog('SYSTEM', 'Hard reset baseline factory restore executed on BistroBoard OS database', 'critical');
+                          //triggerFeedback('Bistroboard system baseline restored to defaults successfully.');
                         }
                       }}
                       className="w-full py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs"
@@ -581,7 +633,7 @@ export default function AdminView({
                   onClick={() => {
                     if (confirm('Clear audit session logs feed?')) {
                       onClearAuditLogs();
-                      triggerFeedback('Audit log cleared.');
+                      //triggerFeedback('Audit log cleared.');
                     }
                   }}
                   className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-800 font-bold rounded-lg text-[10px] shrink-0"

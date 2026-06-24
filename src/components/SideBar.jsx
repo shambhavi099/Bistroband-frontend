@@ -168,7 +168,10 @@ export default function Sidebar({ activeTab, setActiveTab, pendingCount, lowStoc
               {currentUser ? currentUser.name : 'Vedanshi'}
             </p>
             <span className="inline-block text-[9px] font-mono leading-none tracking-wider text-slate-400 bg-slate-850 px-1 py-0.5 rounded border border-slate-800">
-              {currentUser ? currentUser.role.toUpperCase() : 'STAFF'}
+              {currentUser?.role
+                ? currentUser.role.toUpperCase()
+                : 'CUSTOMER'
+              }
             </span>
           </div>
         </div>
