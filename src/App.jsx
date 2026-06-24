@@ -4,8 +4,8 @@
  */
 
 import  { useState, useEffect } from 'react';
-import Sidebar from './components/Sidebar';
-import DashboardView from './components/DashboardView';
+import Sidebar from './components/SideBar';
+import DashboardView from './components/DashBoardView';
 import OrdersView from './components/OrdersView';
 import TablesView from './components/TablesView';
 import MenuView from './components/MenuView';
