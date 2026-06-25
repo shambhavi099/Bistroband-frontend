@@ -54,9 +54,14 @@ const totalRevenue = orders
   const chartHeight = 200;
   const chartWidth = 560;
   const padding = 30;
+
+  const maxRevenue = Math.max(
+  ...(salesTrend || []).map(item => item.revenue),
+  1000
+);
   
   // Find max value in salesTrend for scaling
-  const maxRevenue = Math.max(...salesTrend.map(d => d.revenue), 1000);
+  //const maxRevenue = Math.max(...salesTrend.map(d => d.revenue), 1000);
 
   return (
     <div id="dashboard-view" className="space-y-6">

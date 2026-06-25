@@ -53,6 +53,7 @@ export default function App() {
   const [staffList, setStaffList] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [salesTrend, setSalesTrend] = useState([]);
 
 //Reports
   const [reportSummary, setReportSummary] = useState({
@@ -65,14 +66,11 @@ export default function App() {
 const [popularSellers, setPopularSellers] = useState([]);
 
 useEffect(() => {
-  console.log("Current User:", currentUser);
 
   if (!currentUser) {
     console.log("Skipping fetch...");
     return;
   }
-
-  console.log("Fetching data...");
 
   fetchEmployees();
   fetchTables();
@@ -136,9 +134,31 @@ const fetchTables = async () => {
 const fetchOrders = async () => {
   try {
     const response = await api.get("/orders");
-    setOrders(response.data.data || []);
+
+    const orders = (response.data.data || []).map((order) => ({
+      ...order,
+      status:
+        order.status === "PREPARING"
+          ? "preparing"
+          : order.status === "READY"
+          ? "ready"
+          : order.status === "COMPLETED"
+          ? "served"
+          : order.status.toLowerCase(),
+    }));
+
+    setOrders(orders);
   } catch (error) {
     console.error("Orders Fetch Error:", error);
+  }
+};
+
+const fetchRevenueTrend = async () => {
+  try {
+    const response = await api.get("/reports/revenue-trend");
+    setSalesTrend(response.data.data);
+  } catch (error) {
+    console.error("Revenue Trend Error:", error);
   }
 };
 
@@ -157,6 +177,7 @@ const fetchReports = async () => {
 
     const [summaryRes, popularRes] = await Promise.all([
       api.get("/reports/summary"),
+      api.get("/reports/revenue-trend"),
       api.get("/reports/popular-items"),
     ]);
 
@@ -315,7 +336,7 @@ const handleWipeFinancialLedgers = async () => {
       }
     ];
 
-    setOrders(prev => [...simulatedOrders, ...prev]);
+    //setOrders(prev => [...simulatedOrders, ...prev]);
 
     setTables(prevTables => 
       prevTables.map(t => {
@@ -457,55 +478,92 @@ const handleDeletePromoCampaign = async (id) => {
   // --- ACTIONS HANDLERS ---
 
   // Order Handlers
-  const handleAddOrder = (newOrder) => {
-    setOrders(prev => [newOrder, ...prev]);
-
-    // If dine-in, auto occupy accompanying table
-    if (newOrder.type === 'dine-in' && newOrder.tableNumber) {
-      setTables(prevTables => 
-        prevTables.map(t => {
-          if (t.number === newOrder.tableNumber) {
-            return {
-              ...t,
-              status: 'occupied',
-              currentOrderId: newOrder.id,
-              spendAmount: newOrder.total,
-              assignedStaffName: t.assignedStaffName || staffList.find(s => s.role === 'Server')?.name || "Jessica Lee"
-            };
-          }
-          return t;
-        })
+  const handleAddOrder = async (newOrder) => {
+    try {
+      const selectedTable = tables.find(
+        (table) => table.number === newOrder.tableNumber
       );
+
+      const selectedCustomer = customers.find(
+        (customer) => customer.name === newOrder.customerName
+      );
+      await api.post("/orders", {
+        orderNumber: newOrder.id,
+
+        customerId: selectedCustomer?.id || null,
+        customerName: newOrder.customerName,
+
+        tableId: selectedTable?.id,
+        tableNumber: selectedTable?.tableNumber,
+
+        items: newOrder.items,
+        totalAmount: newOrder.total,
+        specialInstructions: newOrder.notes,
+      });
+
+      await fetchOrders();
+
+      // If dine-in, auto occupy accompanying table
+      if (newOrder.type === "dine-in" && newOrder.tableNumber) {
+        setTables((prevTables) =>
+          prevTables.map((t) => {
+            if (t.number === newOrder.tableNumber) {
+              return {
+                ...t,
+                status: "occupied",
+                currentOrderId: newOrder.id,
+                spendAmount: newOrder.total,
+                assignedStaffName:
+                  t.assignedStaffName ||
+                  staffList.find((s) => s.role === "Server")?.name ||
+                  "Jessica Lee",
+              };
+            }
+            return t;
+          })
+        );
+      }
+    } catch (error) {
+      console.error("Create Order Error:", error);
     }
   };
 
-  const handleUpdateOrderStatus = (orderId, status) => {
-    setOrders(prev => 
-      prev.map(o => {
-        if (o.id === orderId) {
-          const updated = { ...o, status };
-          
-          // Cascading changes to Table if status becomes served
-          if (status === 'served' && o.tableNumber) {
-            setTables(prevTables => 
-              prevTables.map(t => {
-                if (t.number === o.tableNumber) {
-                  return {
-                    ...t,
-                    status: 'billing', // Asking for bill / paying
-                    spendAmount: o.total
-                  };
-                }
-                return t;
-              })
-            );
-          }
-          return updated;
-        }
-        return o;
-      })
-    );
-  };
+const handleUpdateOrderStatus = async (orderId, status) => {
+  try {
+
+    const statusMap = {
+      preparing: "PREPARING",
+      ready: "READY",
+      served: "COMPLETED",
+    };
+    await api.patch(`/orders/${orderId}/status`, {
+      status: statusMap[status],
+    });
+
+    await fetchOrders();
+
+    if (status === "served") {
+      const order = orders.find((o) => o.id === orderId);
+
+      if (order?.tableNumber) {
+        setTables((prevTables) =>
+          prevTables.map((t) => {
+            if (t.number === order.tableNumber) {
+              return {
+                ...t,
+                status: "billing",
+                spendAmount: order.total,
+              };
+            }
+            return t;
+          })
+        );
+      }
+    }
+  } catch (error) {
+    console.error("Update Order Status Error:", error);
+  }
+};
 
   const handleCancelOrder = (orderId) => {
     setOrders(prev => 
@@ -998,7 +1056,7 @@ const handleCustomerLogin = async (email) => {
               orders={orders}
               tables={tables}
               currentUser={currentUser}
-              salesTrend={salesTrendData}
+              salesTrend={salesTrend}
               categoryBreakdown={categoryBreakdown}
               onNavigate={setActiveTab}
               onUpdateOrderStatus={handleUpdateOrderStatus}

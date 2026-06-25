@@ -276,23 +276,23 @@ export const initialStaff= [
   { id: "STF-07", name: "Tom Redfield", role: "Host", status: "on-duty", shift: "Morning (10 AM - 4 PM)", avatarColor: "bg-teal-500", performanceScore: 4.4, phone: "555-0201" }
 ];
 
-export const salesTrendData= [
-  { day: "Wed (May 27)", revenue: 2450, orders: 48 },
-  { day: "Thu (May 28)", revenue: 2680, orders: 52 },
-  { day: "Fri (May 29)", revenue: 4120, orders: 85 },
-  { day: "Sat (May 30)", revenue: 5890, orders: 122 },
-  { day: "Sun (May 31)", revenue: 4940, orders: 98 },
-  { day: "Mon (Jun 01)", revenue: 1850, orders: 36 },
-  { day: "Tue (Jun 02 - Today)", revenue: 3240, orders: 63 } // Current day cumulative
-];
+  export const salesTrendData= [
+    { day: "Wed (May 27)", revenue: 2450, orders: 48 },
+    { day: "Thu (May 28)", revenue: 2680, orders: 52 },
+    { day: "Fri (May 29)", revenue: 4120, orders: 85 },
+    { day: "Sat (May 30)", revenue: 5890, orders: 122 },
+    { day: "Sun (May 31)", revenue: 4940, orders: 98 },
+    { day: "Mon (Jun 01)", revenue: 1850, orders: 36 },
+    { day: "Tue (Jun 02 - Today)", revenue: 3240, orders: 63 } // Current day cumulative
+  ];
 
-export const categoryBreakdown = [
-  { category: "Mains", percentage: 54, color: "bg-amber-600 text-amber-600 border-amber-600" },
-  { category: "Appetizers", percentage: 22, color: "bg-emerald-600 text-emerald-600 border-emerald-600" },
-  { category: "Beverages", percentage: 14, color: "bg-blue-600 text-blue-600 border-blue-600" },
-  { category: "Desserts", percentage: 8, color: "bg-purple-600 text-purple-600 border-purple-600" },
-  { category: "Sides", percentage: 2, color: "bg-pink-600 text-pink-600 border-pink-600" }
-];
+  export const categoryBreakdown = [
+    { category: "Mains", percentage: 54, color: "bg-amber-600 text-amber-600 border-amber-600" },
+    { category: "Appetizers", percentage: 22, color: "bg-emerald-600 text-emerald-600 border-emerald-600" },
+    { category: "Beverages", percentage: 14, color: "bg-blue-600 text-blue-600 border-blue-600" },
+    { category: "Desserts", percentage: 8, color: "bg-purple-600 text-purple-600 border-purple-600" },
+    { category: "Sides", percentage: 2, color: "bg-pink-600 text-pink-600 border-pink-600" }
+  ];
 
 export const initialCustomers = [
   {
