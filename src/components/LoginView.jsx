@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.5
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import api from "../services/api";
 import { 
   Lock, 
@@ -16,16 +16,13 @@ import {
 } from 'lucide-react';
 
 
-export default function LoginView({ onLoginSuccess, onCustomerLogin,}) {
+export default function LoginView({ onLoginSuccess,  onOpenCustomerPortal,}) {
   const [username, setUsername] = useState('');
   const [passcode, setPasscode] = useState('');
-  const [customerEmail, setCustomerEmail] = useState("");
-  const [customerPassword, setCustomerPassword] = useState("");
   const [error, setError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Preset accounts for frictionless testing
-
+// Preset accounts for frictionless testing
 const handleSubmit = async (e) => {
   e.preventDefault();
 
@@ -57,18 +54,7 @@ const handleSubmit = async (e) => {
   }
 };
 
-const handleCustomerPortal = async () => {
-  setError(null);
 
-  const result = await onCustomerLogin(
-    customerEmail,
-    customerPassword
-  );
-
-  if (!result.success) {
-    setError(result.message);
-  }
-};
 
   return (
     <div id="login-container" className="min-h-screen w-screen flex flex-col lg:flex-row bg-slate-50 items-stretch select-none font-sans overflow-x-hidden">
@@ -126,8 +112,8 @@ const handleCustomerPortal = async () => {
           </div>
 
           {/* Interactive Customer Mode Portal Card */}
-          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col gap-3 shadow-sm">
-            <div className="space-y-1">
+          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 shadow-sm">
+            <div className="space-y-1 text-left">
               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[9px] font-bold uppercase tracking-wider">
                 <Sparkles className="h-2.5 w-2.5" />
                 Self-Serve Client Mode
@@ -137,29 +123,22 @@ const handleCustomerPortal = async () => {
                 Bistro Customer Portal
               </h4>
 
-              <p className="text-[10px] text-indigo-700 font-semibold">
-                Enter your registered email to access your customer portal.
+              <p className="text-[10px] text-indigo-700 leading-relaxed font-semibold">
+                Settle up bills online, allocate dining tables, browse the menu, and
+                track your orders.
               </p>
             </div>
 
-            <input
-              type="email"
-              placeholder="Registered Email"
-              value={customerEmail}
-              onChange={(e) => setCustomerEmail(e.target.value)}
-              className="w-full text-xs p-2.5 border border-indigo-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-
             <button
               type="button"
-              onClick={handleCustomerPortal}
-              className="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[10.5px] transition-all flex items-center justify-center gap-1"
+              onClick={onOpenCustomerPortal}
+              className="py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-[10.5px] transition-all flex items-center gap-1 shadow-md shrink-0"
             >
               <span>Enter Portal</span>
               <ArrowRight className="h-3 w-3 stroke-[2.5]" />
             </button>
           </div>
-
+        
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (

@@ -54,6 +54,9 @@ export default function App() {
   const [customers, setCustomers] = useState([]);
   const [payments, setPayments] = useState([]);
   const [salesTrend, setSalesTrend] = useState([]);
+  const [showCustomerPortal, setShowCustomerPortal] = useState(
+    localStorage.getItem("customerPortal") === "true"
+  );
 
 //Reports
   const [reportSummary, setReportSummary] = useState({
@@ -66,12 +69,9 @@ export default function App() {
 const [popularSellers, setPopularSellers] = useState([]);
 
 useEffect(() => {
-
-  if (!currentUser) {
-    console.log("Skipping fetch...");
+  if (!currentUser )  {
     return;
   }
-
   fetchEmployees();
   fetchTables();
   fetchOrders();
@@ -84,6 +84,24 @@ useEffect(() => {
   fetchPromoCampaigns();
   fetchAuditLogs();
 }, [currentUser]);
+
+useEffect(() => {
+  if (showCustomerPortal) {
+    fetchMenu();
+    fetchTables();
+    fetchSystemConfig();
+    fetchPromoCampaigns();
+  }
+}, [showCustomerPortal]);
+
+useEffect(() => {
+  if (!showCustomerPortal) return;
+
+  fetchMenu();
+  fetchTables();
+  fetchSystemConfig();
+  fetchPromoCampaigns();
+}, [showCustomerPortal]);
 
   // Admin and Operations Configurations States
   const [systemConfig, setSystemConfig] = useState({
@@ -165,8 +183,9 @@ const fetchRevenueTrend = async () => {
 const fetchMenu = async () => {
   try {
     const response = await api.get("/menu");
-
+    console.log(response.data.data);
     setMenuItems(response.data.data || []);
+    console.log(response.data.data);
   } catch (error) {
     console.error("Menu Fetch Error:", error);
   }
@@ -487,7 +506,7 @@ const handleDeletePromoCampaign = async (id) => {
       const selectedCustomer = customers.find(
         (customer) => customer.name === newOrder.customerName
       );
-      await api.post("/orders", {
+      const response = await api.post("/orders", {
         orderNumber: newOrder.id,
 
         customerId: selectedCustomer?.id || null,
@@ -501,7 +520,30 @@ const handleDeletePromoCampaign = async (id) => {
         specialInstructions: newOrder.notes,
       });
 
-      await fetchOrders();
+
+      if (showCustomerPortal) {
+        setOrders((prev) => [
+          {
+            id: response.data.orderId,
+            orderNumber: newOrder.id,
+            customerName: newOrder.customerName,
+            tableNumber: newOrder.tableNumber,
+            items: newOrder.items,
+            total: newOrder.total,
+            status: "pending",
+            paymentStatus: "Unpaid",
+            type: newOrder.type,
+            timestamp: newOrder.timestamp,
+            createdAtDate: newOrder.createdAtDate,
+            notes: newOrder.notes,
+          },
+          ...prev,
+        ]);
+      }
+
+      if (!showCustomerPortal) {
+        await fetchOrders();
+      }
 
       // If dine-in, auto occupy accompanying table
       if (newOrder.type === "dine-in" && newOrder.tableNumber) {
@@ -840,12 +882,14 @@ const handleDeleteCustomer = async (customerId) => {
     const res = await api.post("/payments", paymentData);
 
     // Refresh all data
-    await Promise.all([
-      fetchOrders(),
-      fetchTables(),
-      fetchCustomers(),
-      fetchPayments(),
-    ]);
+    if (!showCustomerPortal) {
+  await Promise.all([
+    fetchOrders(),
+    fetchTables(),
+    fetchCustomers(),
+    fetchPayments(),
+  ]);
+}
 
     return res.data;
   } catch (err) {
@@ -926,6 +970,7 @@ const handleFactoryReset = async () => {
     await api.delete("/admin/factory-reset");
 
     await Promise.all([
+      fetchEmployees(),
       fetchOrders(),
       fetchCustomers(),
       fetchPayments(),
@@ -973,29 +1018,36 @@ const handleCustomerLogin = async (email) => {
 };
 
 
-  if (!currentUser) {
-    return <LoginView 
-       onLoginSuccess={handleLoginSuccess}
-       onCustomerLogin={handleCustomerLogin}
-      />;
-  }
+  if (!currentUser && !showCustomerPortal) {
+  return (
+    <LoginView
+      onLoginSuccess={handleLoginSuccess}
+      onOpenCustomerPortal={() => {
+        localStorage.setItem("customerPortal", "true");
+        setShowCustomerPortal(true);
+      }}
+    />
+  );
+}
 
-  if (currentUser.role === 'Customer') {
-    return (
-      <CustomerPortal
-        menuItems={menuItems}
-        tables={tables}
-        orders={orders}
-        systemConfig={systemConfig}
-        promoCampaigns={promoCampaigns}
-        onAddOrder={handleAddOrder}
-        onUpdateTableStatus={handleUpdateTableStatus}
-        onSettleOrderAndTable={handleSettleOrderAndTable}
-        currentUser={currentUser}
-        onLogout={handleLogout}
-      />
-    );
-  }
+  if (showCustomerPortal) {
+  return (
+    <CustomerPortal
+      menuItems={menuItems}
+      tables={tables}
+      orders={orders}
+      systemConfig={systemConfig}
+      promoCampaigns={promoCampaigns}
+      onAddOrder={handleAddOrder}
+      onUpdateTableStatus={handleUpdateTableStatus}
+      onSettleOrderAndTable={handleSettleOrderAndTable}
+      onLogout={() => {
+        localStorage.removeItem("customerPortal");
+        setShowCustomerPortal(false);
+      }}
+    />
+  );
+}
 
   return (
     <div id="restaurant-app-root" className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans antialiased text-slate-800">

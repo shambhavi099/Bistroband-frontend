@@ -39,13 +39,12 @@ export default function CustomerPortal({
   onAddOrder,
   onUpdateTableStatus,
   onSettleOrderAndTable,
-  currentUser,
   onLogout
 }) {
-  const [activePortalTab, setActivePortalTab] = useState('menu');
+   const [activePortalTab, setActivePortalTab] = useState('menu');
 
   // Customer detailed state onboarding - syncs with currentUser or customizes
-  const [custName, setCustName] = useState(currentUser.name);
+  const [custName, setCustName] = useState("Guest Patron");
   const [custPhone, setCustPhone] = useState('555-0199');
   const [selectedTableNum, setSelectedTableNum] = useState(''); // For Dine-In
 
